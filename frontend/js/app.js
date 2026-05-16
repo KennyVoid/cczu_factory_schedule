@@ -690,27 +690,51 @@ const App = (() => {
         const chartDom = document.getElementById('gantt-chart');
         state.ganttChart = echarts.init(chartDom);
 
-        // Prepare data for Gantt-like bar chart
+        // Color map by product
         const products = [...new Set(details.map(d => d.product_name))];
         const colorMap = {};
         const colors = ['#FF6B00', '#409EFF', '#2D8C5A', '#E6A23C', '#909399', '#F56C6C', '#607D8B', '#9C27B0'];
         products.forEach((p, i) => { colorMap[p] = colors[i % colors.length]; });
 
-        // Create horizontal bar chart simulating Gantt
-        // Each task gets its own y-axis category row
-        const yCategories = details.map((_, i) => `#${i + 1}`);
-        const series = details.map((d, i) => {
+        // Generate time slots: start today 08:00, each task = 1h duration, 1h gap
+        const today = new Date();
+        today.setHours(8, 0, 0, 0);
+        const slotMs = 2 * 3600 * 1000;   // 2h per slot
+        const workMs = 1 * 3600 * 1000;   // 1h work duration
+        const baseTime = today.getTime();
+
+        // Build stacked-bar Gantt: each task = invisible spacer + visible work bar
+        const ganttSeries = [];
+        const taskNames = [];
+
+        details.forEach((d, i) => {
+            const startOffset = i * slotMs;
             const color = colorMap[d.product_name] || '#FF6B00';
-            // Place each order on its own row: value=1 at its index, null elsewhere
-            const rowData = yCategories.map((_, ci) => ci === i ? 1 : null);
-            return {
-                name: `${d.order_no}`,
+            const taskName = `${d.order_no || '#' + (i + 1)}`;
+            taskNames.push(taskName);
+
+            // Invisible spacer — positions the bar at the correct start time
+            ganttSeries.push({
+                name: taskName,
                 type: 'bar',
-                stack: 'gantt',
-                data: rowData,
+                stack: `g_${i}`,
+                data: [startOffset],
+                itemStyle: { color: 'transparent', borderColor: 'transparent' },
+                barWidth: 20,
+                emphasis: { itemStyle: { color: 'transparent' } },
+                silent: true,
+                z: 1,
+            });
+            // Visible work bar — shows the 1h duration
+            ganttSeries.push({
+                name: taskName,
+                type: 'bar',
+                stack: `g_${i}`,
+                data: [workMs],
                 itemStyle: {
                     color: color,
                     borderRadius: [3, 3, 3, 3],
+                    opacity: 0.85,
                 },
                 barWidth: 20,
                 label: {
@@ -720,46 +744,70 @@ const App = (() => {
                     color: '#606266',
                     fontSize: 11,
                 },
-            };
+                z: 2,
+            });
         });
+
+        const totalMs = details.length * slotMs;
 
         state.ganttChart.setOption({
             tooltip: {
                 trigger: 'item',
                 formatter: (p) => {
-                    const d = details[p.seriesIndex];
+                    const idx = Math.floor(p.seriesIndex / 2);
+                    const d = details[idx];
+                    if (!d) return '';
+                    const tStart = baseTime + idx * slotMs;
+                    const tEnd = tStart + workMs;
+                    const fmt = (t) => {
+                        const dt = new Date(t);
+                        return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+                    };
                     return `<strong>${d.order_no}</strong><br/>
                         产品: ${d.product_name}<br/>
+                        排产时间: ${fmt(tStart)} - ${fmt(tEnd)}<br/>
                         属性A: ${d.attr_a || '-'} | 属性B: ${d.attr_b || '-'}<br/>
                         数量: ${d.quantity} | 交期: ${d.deadline || '-'}<br/>
                         批次: #${d.batch_id}`;
                 },
             },
             grid: {
-                left: '2%',
-                right: '25%',
-                bottom: '3%',
-                top: '2%',
+                left: '3%',
+                right: '28%',
+                bottom: '8%',
+                top: '3%',
                 containLabel: false,
             },
             xAxis: {
                 type: 'value',
-                show: false,
                 min: 0,
-                max: details.length,
+                max: totalMs,
+                axisLabel: {
+                    formatter: (val) => {
+                        const dt = new Date(baseTime + val);
+                        return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+                    },
+                    color: '#909399',
+                    fontSize: 11,
+                },
+                splitLine: {
+                    show: true,
+                    lineStyle: { color: '#EBEEF5', type: 'dashed' },
+                },
+                axisLine: { show: false },
+                axisTick: { show: false },
             },
             yAxis: {
                 type: 'category',
-                data: details.map((d, i) => `#${i + 1}`),
+                data: taskNames,
                 axisLine: { show: false },
                 axisTick: { show: false },
-                axisLabel: { color: '#909399', fontSize: 11 },
-                splitLine: { lineStyle: { color: '#EBEEF5', type: 'dotted' } },
+                axisLabel: { color: '#303133', fontSize: 12, fontWeight: 500 },
+                splitLine: { lineStyle: { color: '#EBEEF5', type: 'solid' } },
             },
-            series: series,
+            series: ganttSeries,
         });
 
-        // Resize handler
         window.addEventListener('resize', () => {
             if (state.ganttChart) state.ganttChart.resize();
         });
