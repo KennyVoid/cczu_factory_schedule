@@ -1,14 +1,25 @@
+# Database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python cache
 __pycache__/
 *.pyc
-*.db
-*.pyo
-*.egg-info/
-.venv/
+
+# Environment
+.env
 venv/
-env/
-*.zip
-*.csv
-out/
-uploads/
-.claude/
+.venv/
+
+# IDE
 .idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+backend/uploads/

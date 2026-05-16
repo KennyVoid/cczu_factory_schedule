@@ -64,14 +64,14 @@ class ConstraintUpdate(BaseModel):
 # ==================== 排产计划 API（核心） ====================
 
 @app.post("/api/schedule/optimize")
-async def optimize_schedule(order_ids: Optional[str] = Form(None)):
+async def optimize_schedule(data: Optional[dict] = None):
     """
     执行排产优化
-    - order_ids: 可选，指定排产的订单ID列表（逗号分隔），不传则排所有待排产订单
+    - data.order_ids: 可选，指定排产的订单ID列表（逗号分隔），不传则排所有待排产订单
     """
     ids = None
-    if order_ids:
-        ids = [int(x.strip()) for x in order_ids.split(",") if x.strip()]
+    if data and "order_ids" in data and data["order_ids"]:
+        ids = [int(x.strip()) for x in data["order_ids"].split(",") if x.strip()]
 
     optimizer = SimplifiedALNS(order_ids=ids)
     result = optimizer.optimize()
@@ -173,9 +173,10 @@ async def export_schedule(result_id: int):
         ])
 
     output.seek(0)
+    content = '﻿' + output.getvalue()  # BOM for Excel
     return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
+        iter([content]),
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename=schedule_result_{result_id}.csv"},
     )
 
@@ -284,7 +285,9 @@ async def import_orders(file: UploadFile = File(...)):
             product = query("SELECT id FROM product WHERE name = ?", [product_name], one=True)
             if not product:
                 continue
-            order_no = f"IMP-{datetime.date.today().strftime('%Y%m%d')}-{count:04d}"
+            # 使用时间戳确保订单号唯一性
+            timestamp = datetime.datetime.now().strftime("%H%M%S%f")[:6]  # 取微秒前6位
+            order_no = f"IMP-{datetime.date.today().strftime('%Y%m%d')}-{timestamp}-{count:02d}"
             execute(
                 'INSERT INTO "order" (order_no, product_id, quantity, deadline, priority, customer) '
                 "VALUES (?,?,?,?,?,?)",
@@ -318,7 +321,9 @@ async def import_orders(file: UploadFile = File(...)):
             deadline = str(ws.cell(r, col_map.get("交期", 9) + 1).value or "")
             priority = int(ws.cell(r, col_map.get("优先级", 10) + 1).value or 5)
             customer = str(ws.cell(r, col_map.get("客户", 11) + 1).value or "")
-            order_no = f"XLS-{datetime.date.today().strftime('%Y%m%d')}-{count:04d}"
+            # 使用时间戳确保订单号唯一性
+            timestamp = datetime.datetime.now().strftime("%H%M%S%f")[:6]  # 取微秒前6位
+            order_no = f"XLS-{datetime.date.today().strftime('%Y%m%d')}-{timestamp}-{count:02d}"
             execute(
                 'INSERT INTO "order" (order_no, product_id, quantity, deadline, priority, customer) '
                 "VALUES (?,?,?,?,?,?)",

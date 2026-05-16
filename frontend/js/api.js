@@ -49,8 +49,8 @@ const API = (() => {
     // ===== Schedule APIs =====
     const schedule = {
         optimize(orderIds) {
-            const data = orderIds ? { order_ids: orderIds.join(',') } : {};
-            return request('POST', '/api/schedule/optimize', data, true);
+            return request('POST', '/api/schedule/optimize',
+                orderIds ? { order_ids: orderIds.join(',') } : {});
         },
         getResult(id) {
             return request('GET', `/api/schedule/result/${id}`);

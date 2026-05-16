@@ -12,6 +12,7 @@ const App = (() => {
         scheduleData: null,
         ganttChart: null,
         optimizing: false,
+        importedFileCount: 0,
     };
 
     // ==============================
@@ -517,28 +518,11 @@ const App = (() => {
             <input type="file" id="file-upload" accept=".csv,.xlsx" style="display:none" onchange="App.handleFileUpload(this)">
         `;
 
-        // Load order list for reference
-        try {
-            const orderList = await API.orders.list({ status: 0 });
-            if (orderList.data && orderList.data.length > 0) {
-                const info = document.createElement('div');
-                info.className = 'card mb-16';
-                info.style.padding = '12px 20px';
-                info.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:12px">
-                        <i class="fas fa-info-circle" style="color:#409EFF"></i>
-                        <span style="font-size:13px;color:var(--text-secondary)">
-                            待排产订单 <strong style="color:var(--text-primary)">${orderList.total}</strong> 个，
-                            共 <strong style="color:var(--text-primary)">${orderList.data.reduce((s, o) => s + o.quantity, 0)}</strong> 件产品
-                        </span>
-                        <span style="font-size:11px;color:var(--text-muted)">
-                            ${orderList.data.map(o => o.product_name).filter((v, i, a) => a.indexOf(v) === i).join('、')}
-                        </span>
-                    </div>
-                `;
-                el.insertBefore(info, el.children[2]);
-            }
-        } catch (e) { /* ignore */ }
+        // Show imported file info if any
+        if (state.importedFileCount > 0) {
+            // Use setTimeout to ensure the DOM is rendered first
+            setTimeout(() => showImportedInfo(state.importedFileCount), 0);
+        }
     }
 
     // 排产优化执行
@@ -713,14 +697,17 @@ const App = (() => {
         products.forEach((p, i) => { colorMap[p] = colors[i % colors.length]; });
 
         // Create horizontal bar chart simulating Gantt
-        // Each task gets a row, position based on index
+        // Each task gets its own y-axis category row
+        const yCategories = details.map((_, i) => `#${i + 1}`);
         const series = details.map((d, i) => {
             const color = colorMap[d.product_name] || '#FF6B00';
+            // Place each order on its own row: value=1 at its index, null elsewhere
+            const rowData = yCategories.map((_, ci) => ci === i ? 1 : null);
             return {
                 name: `${d.order_no}`,
                 type: 'bar',
                 stack: 'gantt',
-                data: [i],
+                data: rowData,
                 itemStyle: {
                     color: color,
                     borderRadius: [3, 3, 3, 3],
@@ -882,11 +869,41 @@ const App = (() => {
         if (!file) return;
 
         try {
-            await API.orders.importFile(file);
-            toast('订单导入成功', 'success');
+            const result = await API.orders.importFile(file);
+            const count = result.count || 0;
+            state.importedFileCount = count;
             input.value = '';
+
+            if (count > 0) {
+                toast(`成功导入 ${count} 条订单`, 'success');
+                showImportedInfo(count);
+            } else {
+                toast('导入完成，但没有匹配到有效订单数据', 'warning');
+            }
         } catch (e) {
             toast('导入失败: ' + e.message, 'error');
+        }
+    }
+
+    function showImportedInfo(count) {
+        let info = document.getElementById('imported-info');
+        const refEl = document.querySelector('.page-header');
+        if (refEl && refEl.nextElementSibling) {
+            if (!info) {
+                info = document.createElement('div');
+                info.id = 'imported-info';
+                info.className = 'card mb-16';
+                info.style.cssText = 'padding:12px 20px;border-left:3px solid var(--success)';
+                refEl.parentNode.insertBefore(info, refEl.nextElementSibling);
+            }
+            info.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px">
+                    <i class="fas fa-file-excel" style="color:var(--success);font-size:16px"></i>
+                    <span style="font-size:13px;color:var(--text-secondary)">
+                        已导入 <strong style="color:var(--text-primary)">${count}</strong> 条订单，点击"执行排产优化"开始排产
+                    </span>
+                </div>
+            `;
         }
     }
 

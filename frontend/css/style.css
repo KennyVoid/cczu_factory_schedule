@@ -862,38 +862,46 @@ table tbody tr:last-child td { border-bottom: none; }
 /* ===== Schedule parameter panel ===== */
 .schedule-params-panel {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
 }
 
 .param-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    padding: 10px 12px;
+    background: #FAFAFA;
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
 }
 
 .param-item label {
-    font-size: 11px;
-    color: var(--text-secondary);
-    font-weight: 500;
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 .param-input-group {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    flex-wrap: wrap;
 }
 
 .param-input-group span {
     font-size: 11px;
     color: var(--text-secondary);
     white-space: nowrap;
+    min-width: fit-content;
 }
 
 .param-input-group input {
-    width: 64px;
+    flex: 1;
+    min-width: 48px;
+    max-width: 72px;
     height: 28px;
-    padding: 0 6px;
+    padding: 0 4px;
     background: #fff;
     border: 1px solid #DCDFE6;
     border-radius: 2px;
@@ -905,6 +913,10 @@ table tbody tr:last-child td { border-bottom: none; }
 }
 
 .param-input-group input:focus { border-color: var(--accent); }
+
+@media (max-width: 1100px) {
+    .schedule-params-panel { grid-template-columns: 1fr; }
+}
 
 /* ===== Metrics Grid ===== */
 .metrics-grid {
