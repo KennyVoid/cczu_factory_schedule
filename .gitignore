@@ -10,3 +10,4 @@ env/
 out/
 uploads/
 .claude/
+.idea/
