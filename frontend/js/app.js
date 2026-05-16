@@ -696,11 +696,10 @@ const App = (() => {
         const colors = ['#FF6B00', '#409EFF', '#2D8C5A', '#E6A23C', '#909399', '#F56C6C', '#607D8B', '#9C27B0'];
         products.forEach((p, i) => { colorMap[p] = colors[i % colors.length]; });
 
-        // Generate time slots: start today 08:00, each task = 1h duration, 1h gap
+        // Generate time slots: start today, each task = 1 day
         const today = new Date();
-        today.setHours(8, 0, 0, 0);
-        const slotMs = 2 * 3600 * 1000;   // 2h per slot
-        const workMs = 1 * 3600 * 1000;   // 1h work duration
+        today.setHours(0, 0, 0, 0);
+        const dayMs = 24 * 3600 * 1000;   // 1 day per slot
         const baseTime = today.getTime();
 
         // Build stacked-bar Gantt: each task = invisible spacer + visible work bar
@@ -708,12 +707,12 @@ const App = (() => {
         const taskNames = [];
 
         details.forEach((d, i) => {
-            const startOffset = i * slotMs;
+            const startOffset = i * dayMs;
             const color = colorMap[d.product_name] || '#FF6B00';
             const taskName = `${d.order_no || '#' + (i + 1)}`;
             taskNames.push(taskName);
 
-            // Invisible spacer — positions the bar at the correct start time
+            // Invisible spacer — positions the bar at the correct start day
             ganttSeries.push({
                 name: taskName,
                 type: 'bar',
@@ -725,12 +724,12 @@ const App = (() => {
                 silent: true,
                 z: 1,
             });
-            // Visible work bar — shows the 1h duration
+            // Visible work bar — shows full-day duration
             ganttSeries.push({
                 name: taskName,
                 type: 'bar',
                 stack: `g_${i}`,
-                data: [workMs],
+                data: [dayMs],
                 itemStyle: {
                     color: color,
                     borderRadius: [3, 3, 3, 3],
@@ -748,7 +747,7 @@ const App = (() => {
             });
         });
 
-        const totalMs = details.length * slotMs;
+        const totalMs = details.length * dayMs;
 
         state.ganttChart.setOption({
             tooltip: {
@@ -757,15 +756,15 @@ const App = (() => {
                     const idx = Math.floor(p.seriesIndex / 2);
                     const d = details[idx];
                     if (!d) return '';
-                    const tStart = baseTime + idx * slotMs;
-                    const tEnd = tStart + workMs;
-                    const fmt = (t) => {
+                    const tStart = baseTime + idx * dayMs;
+                    const tEnd = tStart + dayMs;
+                    const fmtDate = (t) => {
                         const dt = new Date(t);
-                        return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+                        return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
                     };
                     return `<strong>${d.order_no}</strong><br/>
                         产品: ${d.product_name}<br/>
-                        排产时间: ${fmt(tStart)} - ${fmt(tEnd)}<br/>
+                        排产日期: ${fmtDate(tStart)}<br/>
                         属性A: ${d.attr_a || '-'} | 属性B: ${d.attr_b || '-'}<br/>
                         数量: ${d.quantity} | 交期: ${d.deadline || '-'}<br/>
                         批次: #${d.batch_id}`;
@@ -785,7 +784,7 @@ const App = (() => {
                 axisLabel: {
                     formatter: (val) => {
                         const dt = new Date(baseTime + val);
-                        return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+                        return `${dt.getMonth() + 1}/${dt.getDate()}`;
                     },
                     color: '#909399',
                     fontSize: 11,

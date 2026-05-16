@@ -271,6 +271,38 @@ async def set_order_priority(order_id: int, data: OrderPriority):
     return {"message": "优先级更新成功"}
 
 
+def _normalize_date(value):
+    """统一交期格式为 YYYY-MM-DD"""
+    if not value:
+        return ""
+    if isinstance(value, datetime.datetime):
+        return value.strftime("%Y-%m-%d")
+    if isinstance(value, datetime.date):
+        return value.strftime("%Y-%m-%d")
+    s = str(value).strip()
+    if not s:
+        return ""
+    # Already YYYY-MM-DD
+    if len(s) == 10 and s[4] == "-" and s[7] == "-":
+        return s
+    # YYYY/MM/DD
+    if "/" in s and len(s) == 10:
+        parts = s.split("/")
+        try:
+            return f"{int(parts[0]):04d}-{int(parts[1]):02d}-{int(parts[2]):02d}"
+        except ValueError:
+            return s
+    # Excel serial date number
+    try:
+        serial = int(float(s))
+        if 1 <= serial <= 100000:
+            base = datetime.datetime(1899, 12, 30)
+            return (base + datetime.timedelta(days=serial)).strftime("%Y-%m-%d")
+    except (ValueError, OverflowError):
+        pass
+    return s
+
+
 @app.post("/api/orders/import")
 async def import_orders(file: UploadFile = File(...)):
     """导入订单（CSV/Excel）"""
@@ -285,15 +317,14 @@ async def import_orders(file: UploadFile = File(...)):
             product = query("SELECT id FROM product WHERE name = ?", [product_name], one=True)
             if not product:
                 continue
-            # 使用时间戳确保订单号唯一性
-            timestamp = datetime.datetime.now().strftime("%H%M%S%f")[:6]  # 取微秒前6位
+            timestamp = datetime.datetime.now().strftime("%H%M%S%f")[:6]
             order_no = f"IMP-{datetime.date.today().strftime('%Y%m%d')}-{timestamp}-{count:02d}"
             execute(
                 'INSERT INTO "order" (order_no, product_id, quantity, deadline, priority, customer) '
                 "VALUES (?,?,?,?,?,?)",
                 [order_no, product["id"],
                  int(row.get("数量", 0)),
-                 row.get("交期", ""),
+                 _normalize_date(row.get("交期", "")),
                  int(row.get("优先级", 5)),
                  row.get("客户", "")],
             )
@@ -306,7 +337,6 @@ async def import_orders(file: UploadFile = File(...)):
         if not ws:
             return {"count": 0, "message": "Excel文件为空"}
 
-        # Read header row to find column indices
         headers = [str(ws.cell(1, c).value or "").strip() for c in range(1, ws.max_column + 1)]
         col_map = {h: i for i, h in enumerate(headers)}
 
@@ -318,11 +348,10 @@ async def import_orders(file: UploadFile = File(...)):
             if not product:
                 continue
             qty = int(ws.cell(r, col_map.get("数量", 8) + 1).value or 0)
-            deadline = str(ws.cell(r, col_map.get("交期", 9) + 1).value or "")
+            deadline = _normalize_date(ws.cell(r, col_map.get("交期", 9) + 1).value)
             priority = int(ws.cell(r, col_map.get("优先级", 10) + 1).value or 5)
             customer = str(ws.cell(r, col_map.get("客户", 11) + 1).value or "")
-            # 使用时间戳确保订单号唯一性
-            timestamp = datetime.datetime.now().strftime("%H%M%S%f")[:6]  # 取微秒前6位
+            timestamp = datetime.datetime.now().strftime("%H%M%S%f")[:6]
             order_no = f"XLS-{datetime.date.today().strftime('%Y%m%d')}-{timestamp}-{count:02d}"
             execute(
                 'INSERT INTO "order" (order_no, product_id, quantity, deadline, priority, customer) '
