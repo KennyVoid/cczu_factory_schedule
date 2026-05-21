@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(scripts/start-server.sh --project-dir \"e:/Y/Y2/alns-aps-demo\")",
+      "Bash(bash scripts/start-server.sh --project-dir \"e:/Y/Y2/alns-aps-demo\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(python main.py)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/docs)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/api/employees)",
+      "Bash(curl -s http://localhost:8000/api/employees)",
+      "Bash(curl -s -X POST http://localhost:8000/api/employees -H 'Content-Type: application/json' -d '{\"name\":\"测试员工\",\"role\":\"操作工\",\"team\":\"C班\",\"phone\":\"13900001111\",\"status\":1}')",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/employees\" -H \"Content-Type: application/json\" --data-raw \"{\\\\\"name\\\\\":\\\\\"测试员工\\\\\",\\\\\"role\\\\\":\\\\\"操作工\\\\\",\\\\\"team\\\\\":\\\\\"C班\\\\\",\\\\\"phone\\\\\":\\\\\"13900001111\\\\\",\\\\\"status\\\\\":1}\")",
+      "Bash(printf '{\"name\":\"测试员工\",\"role\":\"操作工\",\"team\":\"C班\",\"phone\":\"13900001111\",\"status\":1}')",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/employees\" -H \"Content-Type: application/json\" -d @/tmp/emp.json)",
+      "Bash(curl -s http://localhost:8000/api/employees/9)",
+      "Bash(printf '{\"name\":\"测试员工 Updated\",\"role\":\"技术员\",\"team\":\"C班\",\"phone\":\"13900001111\",\"status\":1}')",
+      "Bash(curl -s -X PUT \"http://localhost:8000/api/employees/9\" -H \"Content-Type: application/json\" -d @/tmp/emp.json)",
+      "Bash(curl -s -X DELETE \"http://localhost:8000/api/employees/9\")",
+      "Bash(curl -s -w \"\\\\nHTTP Status: %{http_code}\\\\n\" http://localhost:8000/api/employees/9)",
+      "Bash(printf '{\"name\":\"\",\"role\":\"操作工\",\"status\":1}')",
+      "Bash(curl -s -w \"\\\\nHTTP Status: %{http_code}\\\\n\" -X POST \"http://localhost:8000/api/employees\" -H \"Content-Type: application/json\" -d @/tmp/emp.json)",
+      "Bash(printf '{\"name\":\"测试\",\"role\":\"\",\"status\":1}')",
+      "Bash(pkill -f \"python main.py\")",
+      "Bash(taskkill //F //IM python.exe)",
+      "mcp__MiniMax__understand_image",
+      "Bash(git init *)"
+    ]
+  }
+}
